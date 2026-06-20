@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bifrost
+      POSTGRES_PASSWORD: bifrost
+      POSTGRES_DB: bifrost
+    ports:
+      - "5433:5432"
+    volumes:
+      - bifrost-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  bifrost-postgres-data:
