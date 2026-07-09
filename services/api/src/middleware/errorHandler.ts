@@ -1,0 +1,47 @@
+import { ErrorRequestHandler } from "express";
+import { ZodError } from "zod";
+import { ResourceNotFoundError } from "../lib/errors";
+import { errorEnvelope } from "../lib/errorEnvelope";
+
+interface PgError extends Error {
+  code?: string;
+  constraint?: string;
+}
+
+// Express-middleware port of ApiExceptionHandler (a Spring @RestControllerAdvice) — one place
+// mapping domain errors to the shared ErrorEnvelope shape. Must be registered last.
+export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  if (err instanceof ZodError) {
+    const issue = err.issues[0];
+    const param = issue?.path.join(".") || undefined;
+    res
+      .status(400)
+      .json(errorEnvelope("invalid_request_error", "parameter_invalid", issue?.message ?? "Invalid request.", param));
+    return;
+  }
+
+  if (err instanceof ResourceNotFoundError) {
+    res.status(404).json(errorEnvelope("invalid_request_error", "resource_missing", err.message, "id"));
+    return;
+  }
+
+  // Today the only unique constraint a request body can hit is merchants.email — revisit once a
+  // second one exists rather than guessing param/message for a constraint we haven't hit yet.
+  const pgErr = err as PgError;
+  if (pgErr?.code === "23505" && pgErr.constraint === "merchants_email_key") {
+    res
+      .status(409)
+      .json(
+        errorEnvelope(
+          "invalid_request_error",
+          "email_already_registered",
+          "A merchant is already registered with this email.",
+          "email",
+        ),
+      );
+    return;
+  }
+
+  console.error(err);
+  res.status(500).json(errorEnvelope("api_error", "internal_error", "An internal error occurred."));
+};
