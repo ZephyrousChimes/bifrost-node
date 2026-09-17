@@ -39,8 +39,11 @@ export interface PaymentRepository {
   findByPublicIdAndMerchantId(publicId: string, merchantId: number, executor?: Queryable): Promise<PaymentRow | null>;
   findById(id: number, executor?: Queryable): Promise<PaymentRow | null>;
   lockByPublicIdAndMerchantId(publicId: string, merchantId: number, executor: Queryable): Promise<PaymentRow | null>;
+  // Newest first, optionally filtered to one status -- no cursor pagination yet (see README's
+  // "still open" list), just a flat limit. Good enough for the dashboard's recent-activity view;
+  // revisit once a merchant has enough history that 100 rows isn't the whole picture.
+  list(merchantId: number, limit: number, status: string | undefined, executor?: Queryable): Promise<PaymentRow[]>;
 
-  transitionToProcessing(id: number, legalFrom: string[], executor: Queryable): Promise<PaymentRow | null>;
   applyChargeOutcome(
     id: number,
     legalFrom: string[],
@@ -99,14 +102,14 @@ export function createPaymentRepository(pool: Queryable): PaymentRepository {
       return result.rows[0] ?? null;
     },
 
-    async transitionToProcessing(id, legalFrom, executor) {
+    async list(merchantId, limit, status, executor = pool) {
       const result = await executor.query<PaymentRow>(
-        `UPDATE payments SET status = 'processing', updated_at = now()
-         WHERE id = $1 AND status = ANY($2::text[])
-         RETURNING *`,
-        [id, legalFrom],
+        status
+          ? `SELECT * FROM payments WHERE merchant_id = $1 AND status = $2 ORDER BY created_at DESC LIMIT $3`
+          : `SELECT * FROM payments WHERE merchant_id = $1 ORDER BY created_at DESC LIMIT $2`,
+        status ? [merchantId, status, limit] : [merchantId, limit],
       );
-      return result.rows[0] ?? null;
+      return result.rows;
     },
 
     async applyChargeOutcome(id, legalFrom, input, executor) {

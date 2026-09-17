@@ -1,3 +1,4 @@
+import cors from "cors";
 import express from "express";
 import { pool } from "./db/pool";
 import { apiKeyAuth } from "./middleware/auth";
@@ -24,6 +25,11 @@ import { createEventRoutes } from "./event/event.routes";
 export function createApp() {
   const app = express();
   app.disable("x-powered-by");
+  // The dashboard is a separate origin (Next.js dev server, typically :3000) calling this API
+  // (:8080) directly from the browser with a merchant's own secret key in the Authorization
+  // header -- CORS has to explicitly allow that header, or the browser blocks it before the
+  // request ever reaches apiKeyAuth.
+  app.use(cors({ origin: true, allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"] }));
   app.use(express.json());
 
   const merchantRepository = createMerchantRepository(pool);

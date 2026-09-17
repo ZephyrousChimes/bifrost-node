@@ -10,12 +10,14 @@
     "test": "tsx --test src/__tests__/**/*.test.ts"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^5.1.0",
     "ioredis": "^6.0.0",
     "pg": "^8.13.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
     "@types/node": "^22.20.3",
     "@types/pg": "^8.11.10",

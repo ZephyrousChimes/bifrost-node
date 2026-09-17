@@ -17,6 +17,17 @@ export function createPaymentRoutes(paymentService: PaymentService, idempotencyR
     }),
   );
 
+  router.get("/payments", async (req, res) => {
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const results = await paymentService.list(req.merchantId!, limit, status);
+    res.json({
+      object: "list",
+      data: results.map(({ payment, charges }) => toPaymentView(payment, charges)),
+      has_more: results.length === limit,
+    });
+  });
+
   router.get("/payments/:id", async (req, res) => {
     const { payment, charges } = await paymentService.get(req.merchantId!, req.params.id);
     res.json(toPaymentView(payment, charges));

@@ -29,6 +29,9 @@ export interface InsertChargeInput {
 export interface ChargeRepository {
   insert(input: InsertChargeInput, executor: Queryable): Promise<ChargeRow>;
   listByPaymentId(paymentId: number, executor: Queryable): Promise<ChargeRow[]>;
+  // Batched form for listing N payments' charges in one round trip instead of N -- used by
+  // payment.service.ts's list(), where N+1 queries would otherwise scale with page size.
+  listByPaymentIds(paymentIds: number[], executor: Queryable): Promise<ChargeRow[]>;
 }
 
 export function createChargeRepository(): ChargeRepository {
@@ -57,6 +60,15 @@ export function createChargeRepository(): ChargeRepository {
       const result = await executor.query<ChargeRow>(
         `SELECT * FROM charges WHERE payment_id = $1 ORDER BY created_at ASC`,
         [paymentId],
+      );
+      return result.rows;
+    },
+
+    async listByPaymentIds(paymentIds, executor) {
+      if (paymentIds.length === 0) return [];
+      const result = await executor.query<ChargeRow>(
+        `SELECT * FROM charges WHERE payment_id = ANY($1::bigint[]) ORDER BY created_at ASC`,
+        [paymentIds],
       );
       return result.rows;
     },

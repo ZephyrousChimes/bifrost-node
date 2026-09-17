@@ -28,6 +28,11 @@ implementation is built against, not the other way around.
 - **Two sweepers** (`src/jobs/`): a hold-expiry sweeper cancels an authorized-but-never-captured
   payment after its hold expires; a payout-maturity sweeper moves captured funds from `pending`
   to `available` as their own auditable ledger transaction, not an invisible balance `UPDATE`.
+- **Merchant dashboard** (`frontend/`): a Next.js/TypeScript client over the same API a merchant
+  would call directly — balance, recent payments, and the live event feed, polling every 5s.
+  Its visual language (the violet aurora backdrop, the pill-button style, the AeonikPro font) is
+  carried over from an earlier, unfinished landing-page prototype (`ajna-frontend`) — same
+  aesthetic, now driving a real client with real data instead of a static hero section.
 
 ## A real bug this surfaced, and how it was found
 
@@ -61,9 +66,15 @@ npm run dev:api                          # or: npx tsx src/server.ts from servic
 npm test --workspace services/api        # integration tests against the real DB + Redis
 ```
 
+```
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev                              # http://localhost:3000, points at the API above
+```
+
 ## Still open (not yet built)
 
 - The acquirer simulator as its own deployable microservice (currently in-process, `src/payment/acquirer.ts`)
 - CI, AWS deployment config, Prometheus metrics
 - Cursor pagination on list endpoints
-- A merchant-facing web dashboard

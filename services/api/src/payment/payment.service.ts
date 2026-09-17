@@ -20,6 +20,7 @@ export interface PaymentWithCharges {
 export interface PaymentService {
   create(merchantId: number, input: CreatePaymentInput): Promise<PaymentWithCharges>;
   get(merchantId: number, publicId: string): Promise<PaymentWithCharges>;
+  list(merchantId: number, limit: number, status?: string): Promise<PaymentWithCharges[]>;
   confirm(merchantId: number, publicId: string, input: ConfirmPaymentInput): Promise<PaymentWithCharges>;
   capture(merchantId: number, publicId: string, input: CapturePaymentInput): Promise<PaymentWithCharges>;
   cancel(merchantId: number, publicId: string, input: CancelPaymentInput): Promise<PaymentWithCharges>;
@@ -70,6 +71,18 @@ export function createPaymentService(
         throw new ResourceNotFoundError(`No such payment: ${publicId}`);
       }
       return loadWithCharges(payment, pool);
+    },
+
+    async list(merchantId, limit, status) {
+      const payments = await paymentRepository.list(merchantId, limit, status, pool);
+      const charges = await chargeRepository.listByPaymentIds(payments.map((p) => p.id), pool);
+      const chargesByPayment = new Map<number, ChargeRow[]>();
+      for (const charge of charges) {
+        const list = chargesByPayment.get(charge.payment_id) ?? [];
+        list.push(charge);
+        chargesByPayment.set(charge.payment_id, list);
+      }
+      return payments.map((payment) => ({ payment, charges: chargesByPayment.get(payment.id) ?? [] }));
     },
 
     async confirm(merchantId, publicId, input) {
