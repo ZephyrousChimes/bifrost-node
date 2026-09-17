@@ -1,6 +1,6 @@
 import { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
-import { ResourceNotFoundError } from "../lib/errors";
+import { IllegalTransitionError, InvalidRequestError, ResourceNotFoundError } from "../lib/errors";
 import { errorEnvelope } from "../lib/errorEnvelope";
 
 interface PgError extends Error {
@@ -22,6 +22,16 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
   if (err instanceof ResourceNotFoundError) {
     res.status(404).json(errorEnvelope("invalid_request_error", "resource_missing", err.message, "id"));
+    return;
+  }
+
+  if (err instanceof IllegalTransitionError) {
+    res.status(409).json(errorEnvelope("invalid_request_error", "payment_unexpected_state", err.message));
+    return;
+  }
+
+  if (err instanceof InvalidRequestError) {
+    res.status(400).json(errorEnvelope("invalid_request_error", "parameter_invalid", err.message, err.param));
     return;
   }
 

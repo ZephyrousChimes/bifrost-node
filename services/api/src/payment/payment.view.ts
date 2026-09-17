@@ -1,9 +1,10 @@
 import { PaymentRow } from "./payment.repository";
+import { ChargeRow } from "./charge.repository";
+import { toChargeView } from "./charge.view";
 
-// Wire shape for openapi/bifrost.v1.yaml#Payment. latest_charge/charges/cancellation_reason are
-// spec fields with no backing data yet (no charges table until `confirm` exists) — present and
-// empty/null rather than omitted, so the response shape is already stable for later work.
-export function toPaymentView(payment: PaymentRow) {
+// Wire shape for openapi/bifrost.v1.yaml#Payment.
+export function toPaymentView(payment: PaymentRow, charges: ChargeRow[] = []) {
+  const latestCharge = charges.find((c) => c.id === payment.latest_charge_id);
   return {
     id: payment.public_id,
     object: "payment",
@@ -13,11 +14,11 @@ export function toPaymentView(payment: PaymentRow) {
     currency: payment.currency,
     status: payment.status,
     capture_method: payment.capture_method,
-    latest_charge: null,
-    charges: [] as unknown[],
+    latest_charge: latestCharge ? latestCharge.public_id : null,
+    charges: charges.map((c) => toChargeView(c, payment.public_id)),
     description: payment.description,
     metadata: payment.metadata,
-    cancellation_reason: null,
+    cancellation_reason: payment.cancellation_reason,
     created_at: payment.created_at,
     updated_at: payment.updated_at,
   };
